@@ -2,7 +2,8 @@
 
 ## UX — interactive flow
 1. `tutuptutupi` (or `tutuptutupi path/to/file`) launches the app.
-2. Pick file (path prompt with autocomplete) -> pick sheet (Excel) -> confirm index columns
+2. Pick file (arrow-key list) -> pick sheet (Excel) -> pick index columns on horizontal cards
+   (same look as the column editor; toggle order = multiindex level order)
    (single or multiple -> MultiIndex).
 3. Show a `rich` overview table: each column with detected dtype and null % (no raw values).
 4. **Iterate column by column.** For each column ask its role (detected guess pre-selected):

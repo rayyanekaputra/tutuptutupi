@@ -146,9 +146,31 @@ def _choose_columns(plan: Plan, flat: pd.DataFrame) -> None:
             _edit_column(plan, flat, col)
 
 
+def _can_tui() -> bool:
+    return sys.stdin.isatty() and sys.stdout.isatty() and shutil.get_terminal_size().columns >= 60
+
+
+def _pick_index(df: pd.DataFrame, title: str) -> list[str]:
+    """horizontal cards like the column editor; checkbox if it can't run here."""
+    if _can_tui():
+        try:
+            from editor import pick_index
+            picked = pick_index(df, title)
+        except Exception as e:  # noqa: BLE001 - any ui failure falls back to prompts
+            console.print(f"[yellow]index picker unavailable ({type(e).__name__}); using prompts[/]")
+        else:
+            if picked is None:
+                console.print("[yellow]cancelled[/]")
+                sys.exit(1)
+            return picked
+    return _ask(questionary.checkbox(
+        "which columns form the index? (none = plain range index, 2+ = multiindex)",
+        choices=[str(c) for c in df.columns]))
+
+
 def _edit(plan: Plan, flat: pd.DataFrame, title: str) -> Plan:
     """horizontal textual editor; checkbox flow if it can't run here."""
-    if sys.stdin.isatty() and sys.stdout.isatty() and shutil.get_terminal_size().columns >= 60:
+    if _can_tui():
         try:
             from editor import edit_plan
             edited = edit_plan(flat, plan, title)
@@ -183,12 +205,10 @@ def run(file: str | None = None, seed: int | None = None) -> None:
         sheet = sheets[0] if len(sheets) == 1 else _ask(questionary.select("sheet:", choices=sheets))
 
     df = read_table(path, sheet)
-    cols = [str(c) for c in df.columns]
     if not isinstance(df.index, pd.RangeIndex) or df.index.names[0] is not None:
         index_cols = []  # parquet already carries its index
     else:
-        index_cols = _ask(questionary.checkbox(
-            "which columns form the index? (none = plain range index, 2+ = multiindex)", choices=cols))
+        index_cols = _pick_index(df, path.name)
     if index_cols:
         df = df.set_index(index_cols)
 

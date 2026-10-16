@@ -13,7 +13,7 @@ from textual.binding import Binding
 from textual.containers import HorizontalScroll
 from textual.widgets import Static
 
-from core import MODES, Plan, preview, sample_row, set_column
+from core import MODES, Plan, auto_plan, preview, sample_row, set_column
 from detect import ROLES, default_mode
 
 CARD_WIDTH = 22
@@ -28,10 +28,7 @@ class ColumnCard(Static):
     pass
 
 
-class ColumnEditor(App[Plan | None]):
-    """returns the edited plan on enter, None on esc."""
-
-    CSS = f"""
+CSS = f"""
     Screen {{ layout: vertical; }}
     #title {{ height: 1; padding: 0 1; background: $panel; }}
     #cols {{ height: auto; }}
@@ -40,6 +37,12 @@ class ColumnEditor(App[Plan | None]):
     #status {{ height: auto; padding: 0 1; }}
     #help {{ dock: bottom; height: 1; padding: 0 1; background: $panel; color: $text-muted; }}
     """
+
+
+class ColumnEditor(App[Plan | None]):
+    """returns the edited plan on enter, None on esc."""
+
+    CSS = CSS
 
     BINDINGS = [
         Binding("left", "move(-1)", "column", show=False, priority=True),
@@ -64,7 +67,8 @@ class ColumnEditor(App[Plan | None]):
         self.heading = title
 
     def compose(self) -> ComposeResult:
-        yield Static(f"[b]tutuptutupi[/b] — {self.heading}  ({len(self.flat)} rows, {len(self.cols)} columns)", id="title")
+        yield Static(f"[b]tutuptutupi[/b] — {self.heading}  ({len(self.flat)} rows, {len(self.cols)} columns)"
+                     "  · step 2: masking", id="title")
         with HorizontalScroll(id="cols"):
             for i, _ in enumerate(self.cols):
                 yield ColumnCard(id=f"c{i}")
@@ -144,9 +148,101 @@ class ColumnEditor(App[Plan | None]):
         self.exit(None)
 
 
+class IndexPicker(App[list[str] | None]):
+    """pick index columns on the same horizontal cards. toggle order = level order."""
+
+    CSS = CSS
+
+    BINDINGS = [
+        Binding("left", "move(-1)", "column", show=False, priority=True),
+        Binding("right", "move(1)", "column", show=False, priority=True),
+        Binding("space", "toggle", "toggle", show=False, priority=True),
+        Binding("up", "toggle", "toggle", show=False, priority=True),
+        Binding("down", "toggle", "toggle", show=False, priority=True),
+        Binding("enter", "done", "done", show=False, priority=True),
+        Binding("escape", "cancel", "cancel", show=False, priority=True),
+    ]
+
+    def __init__(self, flat: pd.DataFrame, title: str = "") -> None:
+        super().__init__()
+        self.flat = flat
+        self.cols = list(flat.columns)
+        self.sample = sample_row(flat)
+        plan = auto_plan(flat, seed=random.randrange(2**31))
+        self.shown = preview(self.sample, plan)
+        self.picked: list[str] = []
+        self.idx = 0
+        self.heading = title
+
+    def compose(self) -> ComposeResult:
+        yield Static(f"[b]tutuptutupi[/b] — {self.heading}  ({len(self.flat)} rows, {len(self.cols)} columns)"
+                     "  · step 1: index columns", id="title")
+        with HorizontalScroll(id="cols"):
+            for i, _ in enumerate(self.cols):
+                yield ColumnCard(id=f"c{i}")
+        yield Static(id="status")
+        yield Static("←/→ column   space or ↑/↓ toggle index   enter done (none = plain index)   esc cancel", id="help")
+
+    def on_mount(self) -> None:
+        self.refresh_cards()
+
+    def refresh_cards(self) -> None:
+        for i, col in enumerate(self.cols):
+            card = self.query_one(f"#c{i}", ColumnCard)
+            card.update(self._card_text(i, col))
+            card.set_class(i == self.idx, "selected")
+        self.query_one("#cols", HorizontalScroll).scroll_to_widget(
+            self.query_one(f"#c{self.idx}", ColumnCard), animate=False)
+        if not self.picked:
+            msg = "no index: plain row numbers"
+        elif len(self.picked) == 1:
+            msg = f"index: {self.picked[0]}"
+        else:
+            msg = f"multiindex: {' → '.join(map(str, self.picked))}"
+        self.query_one("#status", Static).update(msg)
+
+    def _card_text(self, i: int, col: str) -> Text:
+        inner = CARD_WIDTH - 4
+        s = self.flat[col]
+        t = Text(no_wrap=True, overflow="ellipsis")
+        t.append(_fit(str(col), inner) + "\n", style="bold")
+        t.append(_fit(str(s.dtype), inner) + "\n", style="dim")
+        t.append(_fit(f"unique: {s.nunique()}/{len(s)}", inner) + "\n", style="dim")
+        t.append("─" * inner + "\n", style="dim")
+        if col in self.picked:
+            t.append(f"[✓] index #{self.picked.index(col) + 1}\n", style="reverse bold" if i == self.idx else "bold green")
+        else:
+            t.append("[ ] index\n", style="reverse" if i == self.idx else "dim")
+        t.append("─" * inner + "\n", style="dim")
+        t.append(_fit(self.shown.get(col, "") or "∅", inner), style="green")
+        return t
+
+    def action_move(self, step: int) -> None:
+        self.idx = (self.idx + step) % len(self.cols)
+        self.refresh_cards()
+
+    def action_toggle(self) -> None:
+        col = self.cols[self.idx]
+        if col in self.picked:
+            self.picked.remove(col)
+        else:
+            self.picked.append(col)
+        self.refresh_cards()
+
+    def action_done(self) -> None:
+        self.exit(list(self.picked))
+
+    def action_cancel(self) -> None:
+        self.exit(None)
+
+
 def _fit(s: str, n: int) -> str:
     return s if len(s) <= n else s[: n - 1] + "…"
 
 
 def edit_plan(flat: pd.DataFrame, plan: Plan, title: str = "") -> Plan | None:
     return ColumnEditor(flat, plan, title).run()
+
+
+def pick_index(flat: pd.DataFrame, title: str = "") -> list[str] | None:
+    return IndexPicker(flat, title).run()

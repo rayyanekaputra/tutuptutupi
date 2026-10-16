@@ -65,3 +65,24 @@ async def test_arrows_work_when_columns_overflow():
     async with app.run_test(size=(80, 20)) as pilot:
         await pilot.press("right", "right", "right")
         assert app.idx == 3
+
+
+async def test_index_picker_order_and_toggle(flat):
+    from editor import IndexPicker
+    app = IndexPicker(flat, "t")
+    async with app.run_test(size=(120, 30)) as pilot:
+        # tick name, then customer_id, untick + retick nothing else
+        await pilot.press("right", "space", "left", "down", "right", "right", "space", "space", "enter")
+    assert app.return_value == ["name", "customer_id"]
+
+
+async def test_index_picker_none_and_cancel(flat):
+    from editor import IndexPicker
+    app = IndexPicker(flat, "t")
+    async with app.run_test() as pilot:
+        await pilot.press("enter")
+    assert app.return_value == []
+    app = IndexPicker(flat, "t")
+    async with app.run_test() as pilot:
+        await pilot.press("escape")
+    assert app.return_value is None
