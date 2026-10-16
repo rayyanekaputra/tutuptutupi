@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+import time
 from pathlib import Path
 
 import pandas as pd
@@ -26,16 +27,59 @@ def _ask(q):
     return answer
 
 
-def _pick_file(given: str | None) -> Path:
-    path = Path(given) if given else Path(_ask(questionary.path(
-        "file to mask:",
+PROJECT_DIR = Path(__file__).resolve().parent
+TYPE_PATH = "__type_path__"
+
+
+def list_files(folder: Path) -> list[Path]:
+    """supported files directly in folder, newest first, our own outputs hidden."""
+    files = [p for p in folder.iterdir()
+             if p.is_file() and p.suffix.lower() in SUPPORTED and ".masked." not in p.name]
+    return sorted(files, key=lambda p: p.stat().st_mtime, reverse=True)
+
+
+def _human_size(n: float) -> str:
+    for unit in ("B", "KB", "MB", "GB"):
+        if n < 1024 or unit == "GB":
+            return f"{n:.0f} {unit}" if unit == "B" else f"{n:.1f} {unit}"
+        n /= 1024
+    return f"{n:.1f} GB"
+
+
+def _age(mtime: float) -> str:
+    days = int((time.time() - mtime) // 86400)
+    return "today" if days == 0 else "yesterday" if days == 1 else f"{days} days ago"
+
+
+def _type_path() -> Path:
+    return Path(_ask(questionary.path(
+        "path to file:",
         validate=lambda p: Path(p).is_file() and Path(p).suffix.lower() in SUPPORTED
         or f"must be an existing {', '.join(sorted(SUPPORTED))} file",
     )))
-    if not path.is_file():
-        console.print(f"[red]not a file:[/] {path}")
-        sys.exit(1)
-    return path
+
+
+def _pick_file(given: str | None) -> Path:
+    if given:
+        path = Path(given)
+        if not path.is_file():
+            console.print(f"[red]not a file:[/] {path}")
+            sys.exit(1)
+        return path
+    files = list_files(PROJECT_DIR)
+    if not files:
+        console.print(f"[yellow]no supported files in {PROJECT_DIR}[/]")
+        return _type_path()
+    width = max(len(p.name) for p in files)
+    choices = [
+        questionary.Choice(f"{p.name.ljust(width)}   ({_human_size(p.stat().st_size)}, {_age(p.stat().st_mtime)})", value=str(p))
+        for p in files
+    ]
+    choices.append(questionary.Choice("✎ type a path…", value=TYPE_PATH))
+    picked = _ask(questionary.select(
+        "file to mask: (arrows to move, type to filter)", choices=choices,
+        use_search_filter=True, use_jk_keys=False))
+    return _type_path() if picked == TYPE_PATH else Path(picked)
 
 
 def _overview(df: pd.DataFrame) -> None:
