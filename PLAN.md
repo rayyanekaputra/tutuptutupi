@@ -45,3 +45,35 @@
 ## Notes
 - Partial masking still reveals part of each value. Fine for an LLM's eyes, not for public release.
   Mention this in the README and the app.
+
+## Phase 1.1 — arrow-key file picker
+Goal: no typing paths on first run. Running `./tutuptutupi.py` with no file shows a menu.
+
+```
+? file to mask:
+❯ Item Cost and Selling Price Latest  - 2026-10-12T152407.896.xls   (1.3 MB, 4 days ago)
+  sales_2025.csv                                                    (220 KB, today)
+  ✎ type a path…
+```
+
+Rules:
+- Always lists the **project folder** (where `tutuptutupi.py` lives), not the shell's cwd.
+- **Only that folder**: no subfolders listed, no folder navigation. Files elsewhere go
+  through `✎ type a path…` (current path prompt with autocomplete).
+- Only supported extensions (`fileio.SUPPORTED`), sorted newest first.
+- Each entry shows file size and modified age.
+- Hide our own outputs: `*.masked.*` and `*.schema.md`.
+- Type-to-filter when the list is long (questionary `select` with `use_search_filter`, or
+  `autocomplete` fallback if the installed version lacks it).
+- No supported files found -> say so and go straight to `type a path…`.
+- A file passed on the command line skips the picker (unchanged).
+- Default save location stays next to the input file.
+
+Implementation:
+- `app.py`: new `_list_files(folder) -> list[Path]` (pure, testable) and
+  `_pick_file()` rewritten to use `questionary.select`.
+- Project folder resolved from `Path(__file__).parent` of the modules.
+- Helper `_human_size()`, `_age()` for the labels.
+
+Tests:
+- `_list_files` returns only supported, non-masked files, newest first, no directories.
