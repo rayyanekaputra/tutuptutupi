@@ -77,3 +77,48 @@ Implementation:
 
 Tests:
 - `_list_files` returns only supported, non-masked files, newest first, no directories.
+
+## Phase 1.2 — only ask about chosen columns
+Problem: after answering one column the app walks through every remaining column.
+
+New flow:
+1. Show a summary table of all columns: name, dtype, guessed role, default mode,
+   one masked sample value.
+2. `questionary.checkbox("which columns do you want to change?")` (none = accept all).
+3. Ask role + mode **only for the ticked columns**. Unticked keep their guesses.
+4. Show the summary again with the changes; confirm or edit again.
+
+Implementation: in `app.py`, replace the per-column loop with
+`_summary_table(plan, sample_row)` + `_edit_columns(plan, cols)`.
+
+## Phase 2 — horizontal column editor (Textual)
+Spreadsheet-like screen to set every column's role/mode in one place.
+
+```
+ tutuptutupi — Item Cost...xls  (4066 rows)     ←/→ column  ↑/↓ change  tab role/mode  enter done
+┌────────────┬────────────┬────────────┬──────────────┬────────────┬──────┐
+│ Item Code  │ Item Name  │ Price List │ Created Date │ Latest HPP │ …    │
+│ str        │ str        │ str        │ datetime     │ float      │      │
+├────────────┼────────────┼────────────┼──────────────┼────────────┼──────┤
+│ role: id   │ text       │ category   │ date         │ number     │      │
+│ mode: part │ partial    │ partial    │ partial      │ keep       │      │
+├────────────┼────────────┼────────────┼──────────────┼────────────┼──────┤
+│ **N1****   │ Frozen A** │ Pric* **** │ 2026-**-**   │ 52144.06   │      │
+└────────────┴────────────┴────────────┴──────────────┴────────────┴──────┘
+```
+
+Rules:
+- One **sample row** only, always shown masked, updated live when a mode changes.
+  Prefer a row with the fewest nulls so every column shows something.
+- ←/→ move between columns, horizontal scroll when they don't fit.
+  ↑/↓ cycle the value, tab switches between role and mode, enter confirms, esc cancels.
+- `keep` on an id/text column still asks for confirmation.
+- Fallback to the Phase 1.2 checkbox flow if Textual can't start (too narrow / no tty).
+- Rest of the flow (file picker, rows, save) stays as is.
+
+Implementation:
+- New `editor.py`: `ColumnEditor(App)` takes `(columns, plan, sample_row)` and returns the
+  edited `Plan` (or `None` on cancel). No file I/O inside.
+- Add `textual` to dependencies.
+- Tests: Textual `run_test()` pilot — press keys, assert resulting plan; sample cell never
+  shows the raw value for masked modes.
