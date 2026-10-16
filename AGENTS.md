@@ -31,7 +31,8 @@ The consumer only needs structure, not real values.
 - Keep it simple: one package, few dependencies (pandas, optionally pyarrow/openpyxl).
 
 ## Stack & conventions
-- Python 3.11+, pandas. Interactive UI via `questionary` (prompts), `rich` (tables) and `textual` (horizontal column editor, `editor.py`).
+- Python 3.11+, pandas. Interactive UI via `questionary` (prompts), `rich` (tables) and `textual` (index picker + horizontal column editor, `editor.py`).
+  The textual apps run **inline** (`run(inline=True)`, `ansi_color=True`) like agentic CLIs, not fullscreen; keep it that way.
   A non-interactive path (flags) may exist for scripting, but interactive is the main UX.
 - Setup: `python3 -m venv .venv && .venv/bin/pip install -r requirements.txt` (add `-r requirements-dev.txt` for tests). Run app: `python3 tutuptutupi.py` (or `./tutuptutupi.py [file]`) — it switches to `.venv` automatically.
 - Tests with `pytest`. Run: `.venv/bin/pytest -q`.
