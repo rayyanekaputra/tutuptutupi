@@ -29,13 +29,13 @@ class ColumnCard(Static):
 
 
 CSS = f"""
-    Screen {{ layout: vertical; }}
-    #title {{ height: 1; padding: 0 1; background: $panel; }}
+    Screen {{ layout: vertical; height: auto; background: transparent; }}
+    #title {{ height: 1; padding: 0 1; color: $accent; }}
     #cols {{ height: auto; }}
     ColumnCard {{ width: {CARD_WIDTH}; height: auto; border: round $panel-lighten-2; padding: 0 1; }}
     ColumnCard.selected {{ border: heavy $accent; }}
     #status {{ height: auto; padding: 0 1; }}
-    #help {{ dock: bottom; height: 1; padding: 0 1; background: $panel; color: $text-muted; }}
+    #help {{ height: 1; padding: 0 1; color: $text-muted; }}
     """
 
 
@@ -55,7 +55,7 @@ class ColumnEditor(App[Plan | None]):
     ]
 
     def __init__(self, flat: pd.DataFrame, plan: Plan, title: str = "") -> None:
-        super().__init__()
+        super().__init__(ansi_color=True)
         self.flat = flat
         self.plan = copy.deepcopy(plan)
         self.sample = sample_row(flat)
@@ -164,7 +164,7 @@ class IndexPicker(App[list[str] | None]):
     ]
 
     def __init__(self, flat: pd.DataFrame, title: str = "") -> None:
-        super().__init__()
+        super().__init__(ansi_color=True)
         self.flat = flat
         self.cols = list(flat.columns)
         self.sample = sample_row(flat)
@@ -241,8 +241,8 @@ def _fit(s: str, n: int) -> str:
 
 
 def edit_plan(flat: pd.DataFrame, plan: Plan, title: str = "") -> Plan | None:
-    return ColumnEditor(flat, plan, title).run()
+    return ColumnEditor(flat, plan, title).run(inline=True)
 
 
 def pick_index(flat: pd.DataFrame, title: str = "") -> list[str] | None:
-    return IndexPicker(flat, title).run()
+    return IndexPicker(flat, title).run(inline=True)

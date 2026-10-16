@@ -93,6 +93,7 @@ Implementation: in `app.py`, replace the per-column loop with
 `_summary_table(plan, sample_row)` + `_edit_columns(plan, cols)`.
 
 ## Phase 2 — horizontal column editor (Textual) (done)
+Runs **inline** (`run(inline=True)`, `ansi_color=True`): renders under the prompt in the normal scrollback, like agentic CLIs, instead of a fullscreen alternate screen.
 Spreadsheet-like screen to set every column's role/mode in one place.
 
 ```
