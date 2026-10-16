@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import random
 import sys
 import time
+from dataclasses import replace
 from pathlib import Path
 
 import pandas as pd
@@ -11,11 +13,12 @@ import questionary
 from rich.console import Console
 from rich.table import Table
 
-from core import MODES, ColumnPlan, _date_fmt, auto_plan, flatten, mask_frame, sample_rows, schema_notes
-from detect import ROLES, default_mode, guess_role
+from core import MODES, Plan, auto_plan, flatten, mask_frame, preview, sample_row, sample_rows, schema_notes, set_column
+from detect import ROLES, default_mode
 from fileio import EXCEL, SUPPORTED, excel_sheets, read_table, write_table
 
 console = Console()
+_PREVIEW_SEED = random.randrange(2**31)  # stable fake values across previews
 
 
 def _ask(q):
@@ -104,6 +107,44 @@ def _preview(masked: pd.DataFrame, n: int = 5) -> None:
     console.print(t)
 
 
+def _summary(plan: Plan, flat: pd.DataFrame, sample: pd.DataFrame) -> None:
+    shown = preview(sample, replace(plan, seed=_PREVIEW_SEED))
+    t = Table(title="masking plan (sample row shown masked)")
+    for h in ("column", "dtype", "role", "mode", "sample"):
+        t.add_column(h)
+    for col, cp in plan.columns.items():
+        warn = " [red]⚠ real values[/]" if cp.mode == "keep" and cp.role in ("id", "text") else ""
+        t.add_row(str(col), str(flat[col].dtype), cp.role, cp.mode + warn, shown.get(col, ""))
+    console.print(t)
+
+
+def _edit_column(plan: Plan, flat: pd.DataFrame, col: str) -> None:
+    cp = plan.columns[col]
+    role = _ask(questionary.select(f"[{col}] ({flat[col].dtype}) role:", choices=ROLES, default=cp.role))
+    mode = _ask(questionary.select(
+        f"[{col}] mask mode:", choices=MODES, default=cp.mode if role == cp.role else default_mode(role)))
+    if mode == "keep" and role in ("id", "text"):
+        if not _ask(questionary.confirm(f"[{col}] keep real {role} values unmasked?", default=False)):
+            mode = default_mode(role)
+    set_column(plan, flat, col, role, mode)
+    if role == "date" and plan.columns[col].role != "date":
+        console.print(f"[yellow]couldn't detect a date format for {col}; masking it as text[/]")
+
+
+def _choose_columns(plan: Plan, flat: pd.DataFrame) -> None:
+    """show the plan; ask only about the columns the user ticks. repeat until accepted."""
+    sample = sample_row(flat)
+    while True:
+        _summary(plan, flat, sample)
+        picked = _ask(questionary.checkbox(
+            "which columns do you want to change? (space to tick, enter with none = accept)",
+            choices=[str(c) for c in plan.columns]))
+        if not picked:
+            return
+        for col in picked:
+            _edit_column(plan, flat, col)
+
+
 def _ask_rows(total: int) -> int | None:
     raw = _ask(questionary.text(
         f"how many rows to export? (of {total}, 'all' for everything)",
@@ -136,23 +177,7 @@ def run(file: str | None = None, seed: int | None = None) -> None:
 
     plan = auto_plan(df, seed=seed)
     flat, _ = flatten(df)
-    console.print("\n[bold]column by column[/] — confirm the role and mask mode\n")
-    for col in flat.columns:
-        guess = guess_role(col, flat[col])
-        role = _ask(questionary.select(
-            f"[{col}] ({flat[col].dtype}) role:", choices=ROLES, default=guess))
-        mode = _ask(questionary.select(
-            f"[{col}] mask mode:", choices=MODES, default=default_mode(role)))
-        if mode == "keep" and role in ("id", "text"):
-            if not _ask(questionary.confirm(f"[{col}] keep real {role} values unmasked?", default=False)):
-                mode = default_mode(role)
-        cp = plan.columns[col]
-        plan.columns[col] = ColumnPlan(role, mode, cp.date_format if role == cp.role else None)
-        if role == "date" and not plan.columns[col].date_format:
-            plan.columns[col].date_format = _date_fmt(flat[col], "date")
-            if not plan.columns[col].date_format:
-                console.print(f"[yellow]couldn't detect a date format for {col}; masking it as text[/]")
-                plan.columns[col].role = "text"
+    _choose_columns(plan, flat)
 
     if any(cp.role == "id" and cp.mode in ("partial", "full") for cp in plan.columns.values()):
         plan.id_width = int(_ask(questionary.text(

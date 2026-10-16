@@ -97,3 +97,14 @@ def test_sampled_range_index_not_written(tmp_path, df):
     out = tmp_path / "o.csv"
     write_table(mask_frame(sample_rows(df, 3, 0), auto_plan(df)), out)
     assert list(read_table(out).columns) == list(df.columns)
+
+
+def test_sample_row_and_preview(df):
+    from core import preview, sample_row, set_column
+    plan = auto_plan(df, seed=1)
+    row = sample_row(df)
+    assert row.notna().all(axis=1).iloc[0]
+    shown = preview(row, plan)
+    assert shown["name"] != row["name"].iloc[0]
+    set_column(plan, df, "name", "date", "partial")  # undetectable date -> text
+    assert plan.columns["name"].role == "text"

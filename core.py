@@ -153,3 +153,25 @@ def schema_notes(df: pd.DataFrame, plan: Plan) -> str:
         lines.append(f"| {col} | {flat[col].dtype} | {cp.role} | {cp.mode} | {cp.date_format or ''} | {null_pct} |")
     lines += ["", f"ids are masked to a fixed width of {plan.id_width} characters; `*` marks hidden characters."]
     return "\n".join(lines) + "\n"
+
+
+def sample_row(flat: pd.DataFrame) -> pd.DataFrame:
+    """the single row with the fewest nulls, used for previews."""
+    if flat.empty:
+        return flat
+    return flat.loc[[flat.isna().sum(axis=1).idxmin()]]
+
+
+def set_column(plan: Plan, flat: pd.DataFrame, col: str, role: str, mode: str) -> None:
+    """update one column's plan; a date column with no detectable format is masked as text."""
+    old = plan.columns[col]
+    fmt = old.date_format if role == old.role else _date_fmt(flat[col], role)
+    plan.columns[col] = ColumnPlan(role if role != "date" or fmt else "text", mode, fmt)
+
+
+def preview(sample: pd.DataFrame, plan: Plan) -> dict[str, str]:
+    """masked values of the sample row as display strings."""
+    if sample.empty:
+        return {c: "" for c in plan.columns}
+    row = mask_frame(sample, plan).iloc[0]
+    return {c: "" if _isna(v) else str(v) for c, v in row.items()}
