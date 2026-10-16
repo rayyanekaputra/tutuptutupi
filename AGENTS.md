@@ -31,12 +31,12 @@ The consumer only needs structure, not real values.
 - Keep it simple: one package, few dependencies (pandas, optionally pyarrow/openpyxl).
 
 ## Stack & conventions
-- Python 3.11+, pandas. Interactive UI via `questionary` (prompts) + `rich` (tables/preview).
+- Python 3.11+, pandas. Interactive UI via `questionary` (prompts), `rich` (tables) and `textual` (horizontal column editor, `editor.py`).
   A non-interactive path (flags) may exist for scripting, but interactive is the main UX.
 - Setup: `python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"`. Run app: `python3 tutuptutupi.py` (or `./tutuptutupi.py [file]`) — it switches to `.venv` automatically.
 - Tests with `pytest`. Run: `.venv/bin/pytest -q`.
 - Each export also writes `<name>.schema.md` with original dtypes/roles for the llm.
-- Layout: entry point `tutuptutupi.py`, flat modules in the repo root (`app.py`, `cli.py`, `core.py`, `detect.py`, `fileio.py`, `maskers.py`), `tests/`, `PLAN.md`. No nested package folder.
+- Layout: entry point `tutuptutupi.py`, flat modules in the repo root (`app.py`, `cli.py`, `core.py`, `detect.py`, `editor.py`, `fileio.py`, `maskers.py`), `tests/`, `PLAN.md`. No nested package folder.
 - Type hints everywhere; small pure functions per dtype.
 
 ## Git workflow

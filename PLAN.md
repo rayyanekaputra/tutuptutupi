@@ -46,7 +46,7 @@
 - Partial masking still reveals part of each value. Fine for an LLM's eyes, not for public release.
   Mention this in the README and the app.
 
-## Phase 1.1 — arrow-key file picker
+## Phase 1.1 — arrow-key file picker (done)
 Goal: no typing paths on first run. Running `./tutuptutupi.py` with no file shows a menu.
 
 ```
@@ -78,7 +78,7 @@ Implementation:
 Tests:
 - `_list_files` returns only supported, non-masked files, newest first, no directories.
 
-## Phase 1.2 — only ask about chosen columns
+## Phase 1.2 — only ask about chosen columns (done, used as fallback)
 Problem: after answering one column the app walks through every remaining column.
 
 New flow:
@@ -91,7 +91,7 @@ New flow:
 Implementation: in `app.py`, replace the per-column loop with
 `_summary_table(plan, sample_row)` + `_edit_columns(plan, cols)`.
 
-## Phase 2 — horizontal column editor (Textual)
+## Phase 2 — horizontal column editor (Textual) (done)
 Spreadsheet-like screen to set every column's role/mode in one place.
 
 ```

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import random
+import shutil
 import sys
 import time
 from dataclasses import replace
@@ -145,6 +146,24 @@ def _choose_columns(plan: Plan, flat: pd.DataFrame) -> None:
             _edit_column(plan, flat, col)
 
 
+def _edit(plan: Plan, flat: pd.DataFrame, title: str) -> Plan:
+    """horizontal textual editor; checkbox flow if it can't run here."""
+    if sys.stdin.isatty() and sys.stdout.isatty() and shutil.get_terminal_size().columns >= 60:
+        try:
+            from editor import edit_plan
+            edited = edit_plan(flat, plan, title)
+        except Exception as e:  # noqa: BLE001 - any ui failure falls back to prompts
+            console.print(f"[yellow]column editor unavailable ({type(e).__name__}); using prompts[/]")
+        else:
+            if edited is None:
+                console.print("[yellow]cancelled[/]")
+                sys.exit(1)
+            _summary(edited, flat, sample_row(flat))
+            return edited
+    _choose_columns(plan, flat)
+    return plan
+
+
 def _ask_rows(total: int) -> int | None:
     raw = _ask(questionary.text(
         f"how many rows to export? (of {total}, 'all' for everything)",
@@ -177,7 +196,7 @@ def run(file: str | None = None, seed: int | None = None) -> None:
 
     plan = auto_plan(df, seed=seed)
     flat, _ = flatten(df)
-    _choose_columns(plan, flat)
+    plan = _edit(plan, flat, path.name)
 
     if any(cp.role == "id" and cp.mode in ("partial", "full") for cp in plan.columns.values()):
         plan.id_width = int(_ask(questionary.text(
