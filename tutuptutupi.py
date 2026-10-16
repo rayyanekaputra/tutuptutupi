@@ -14,7 +14,7 @@ except ImportError:
     # deps missing in this python: rerun with the project's venv if it exists
     if VENV_PY.exists() and Path(sys.prefix).resolve() != (HERE / ".venv").resolve():
         os.execv(VENV_PY, [str(VENV_PY), __file__, *sys.argv[1:]])
-    sys.exit('missing dependencies. run: python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"')
+    sys.exit("missing dependencies. run: python3 -m venv .venv && .venv/bin/pip install -r requirements.txt")
 
 sys.path.insert(0, str(HERE))
 from cli import main  # noqa: E402

@@ -1,0 +1,8 @@
+# runtime
+pandas==3.0.6
+questionary==2.1.1
+rich==15.0.0
+textual==8.2.8
+openpyxl==3.1.5  # .xlsx
+xlrd==2.0.2      # legacy .xls
+pyarrow==26.0.0  # .parquet
