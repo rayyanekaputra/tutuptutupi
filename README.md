@@ -6,6 +6,8 @@ use it when you want to show a spreadsheet to an llm (or load it into a test env
 but the real values must not leave your machine. the output keeps the columns, dtypes,
 index, nulls and value formats, so whoever reads it still understands the structure.
 
+![tutuptutupi usage demo](usage.gif)
+
 ```
 item code   item name       created date   price
 **n1****    fro**n a****    2026-**-**     52144.06
