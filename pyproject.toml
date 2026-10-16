@@ -16,7 +16,7 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-py-modules = ["app", "cli", "core", "detect", "editor", "fileio", "maskers"]
+py-modules = ["app", "cli", "core", "detect", "editor", "fileio", "i18n", "maskers"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
