@@ -11,6 +11,8 @@ from pathlib import Path
 
 import pandas as pd
 import questionary
+from prompt_toolkit.filters import is_done
+from prompt_toolkit.layout import ConditionalContainer, FormattedTextControl, HSplit, Layout, Window
 from rich.console import Console
 from rich.table import Table
 
@@ -22,10 +24,44 @@ from i18n import ALL_WORDS, LANGS, set_lang, t
 console = Console()
 _PREVIEW_SEED = random.randrange(2**31)  # stable fake values across previews
 
+STEPS = ("lang", "file", "index", "mask", "rows", "save")
+_note = ""  # now/next hint of the current step, shown under every prompt
+_file = ""  # picked file name, shown highlighted in every step header
+
+
+def _badge(name: str) -> str:
+    return f"[bold black on yellow] {name} [/]"
+
+
+def _note_text(step: str) -> str:
+    return t("note", now=t(f"now_{step}"), next=t(f"next_{step}"))
+
+
+def _step(step: str) -> None:
+    """decorated lowercase step header; sets the note shown under the step's prompts."""
+    global _note
+    _note = _note_text(step)
+    title = f"[bold magenta]✦ {t('step', n=STEPS.index(step) + 1, total=len(STEPS))}[/] [bold]· {t('s_' + step)} ✦[/]"
+    console.print()
+    console.rule(title + (f"  {_badge(_file)}" if _file and step != "file" else ""), align="left", style="magenta")
+
+
+def _with_note(q):
+    """append the step note below the prompt; it disappears once answered."""
+    if not _note:
+        return q
+    app = q.application
+    note = ConditionalContainer(
+        Window(FormattedTextControl([("fg:ansibrightblack italic", "".join(f"\n  {line}" for line in _note.splitlines()))]),
+               wrap_lines=True, dont_extend_height=True),
+        filter=~is_done)
+    app.layout = Layout(HSplit([app.layout.container, note]), focused_element=app.layout.current_window)
+    return q
+
 
 def _ask(q):
     """unwrap a questionary prompt; ctrl+c exits cleanly."""
-    answer = q.ask()
+    answer = _with_note(q).ask()
     if answer is None:
         console.print(f"[yellow]{t('cancelled')}[/]")
         sys.exit(1)
@@ -151,12 +187,12 @@ def _can_tui() -> bool:
     return sys.stdin.isatty() and sys.stdout.isatty() and shutil.get_terminal_size().columns >= 60
 
 
-def _pick_index(df: pd.DataFrame, title: str) -> list[str]:
+def _pick_index(df: pd.DataFrame) -> list[str]:
     """horizontal cards like the column editor; checkbox if it can't run here."""
     if _can_tui():
         try:
             from editor import pick_index
-            picked = pick_index(df, title)
+            picked = pick_index(df, _note)
         except Exception as e:  # noqa: BLE001 - any ui failure falls back to prompts
             console.print(f"[yellow]{t('index_unavailable', err=type(e).__name__)}[/]")
         else:
@@ -169,12 +205,12 @@ def _pick_index(df: pd.DataFrame, title: str) -> list[str]:
         choices=[str(c) for c in df.columns]))
 
 
-def _edit(plan: Plan, flat: pd.DataFrame, title: str) -> Plan:
+def _edit(plan: Plan, flat: pd.DataFrame) -> Plan:
     """horizontal textual editor; checkbox flow if it can't run here."""
     if _can_tui():
         try:
             from editor import edit_plan
-            edited = edit_plan(flat, plan, title)
+            edited = edit_plan(flat, plan, _note)
         except Exception as e:  # noqa: BLE001 - any ui failure falls back to prompts
             console.print(f"[yellow]{t('editor_unavailable', err=type(e).__name__)}[/]")
         else:
@@ -205,12 +241,17 @@ def _pick_lang() -> None:
 
 
 def run(file: str | None = None, seed: int | None = None, lang: str | None = None) -> None:
+    global _file
     if lang:
         set_lang(lang)
     else:
+        _step("lang")
         _pick_lang()
-    console.print(f"[bold]tutuptutupi[/] — {t('banner')}\n")
+    console.print(f"\n[bold]tutuptutupi[/] — {t('banner')}")
+    _step("file")
     path = _pick_file(file)
+    _file = path.name
+    console.print(f"  {_badge(_file)}")
 
     sheet = None
     if path.suffix.lower() in EXCEL:
@@ -218,29 +259,33 @@ def run(file: str | None = None, seed: int | None = None, lang: str | None = Non
         sheet = sheets[0] if len(sheets) == 1 else _ask(questionary.select(t("sheet"), choices=sheets))
 
     df = read_table(path, sheet)
+    _step("index")
     if not isinstance(df.index, pd.RangeIndex) or df.index.names[0] is not None:
         index_cols = []  # parquet already carries its index
     else:
-        index_cols = _pick_index(df, path.name)
+        index_cols = _pick_index(df)
     if index_cols:
         df = df.set_index(index_cols)
 
+    _step("mask")
     _overview(df)
 
     plan = auto_plan(df, seed=seed)
     flat, _ = flatten(df)
-    plan = _edit(plan, flat, path.name)
+    plan = _edit(plan, flat)
 
     if any(cp.role == "id" and cp.mode in ("partial", "full") for cp in plan.columns.values()):
         plan.id_width = int(_ask(questionary.text(
             t("ask_id_width"), default="8",
             validate=lambda v: v.isdigit() and int(v) > 0 or t("positive_number"))))
 
+    _step("rows")
     rows = _ask_rows(len(df))
     sampled = sample_rows(df, rows, seed)
     masked = mask_frame(sampled, plan)
     _preview(masked)
 
+    _step("save")
     default_out = path.with_name(f"{path.stem}.masked{path.suffix}")
     out = Path(_ask(questionary.path(t("save_to"), default=str(default_out))))
     if out.resolve() == path.resolve():
@@ -256,5 +301,7 @@ def run(file: str | None = None, seed: int | None = None, lang: str | None = Non
     write_table(masked, out)
     notes = out.with_name(f"{out.stem}.schema.md")
     notes.write_text(schema_notes(df, plan))
-    console.print(f"[green]{t('done')}[/] -> {out}\n       {notes} {t('notes_hint')}")
+    console.print()
+    console.rule(f"[bold green]✦ {t('done')} ✦[/]", align="left", style="green")
+    console.print(f"  {_badge(out.name)} {out}\n  {notes} [dim]{t('notes_hint')}[/]")
     console.print(f"[dim]{t('disclaimer')}[/]")

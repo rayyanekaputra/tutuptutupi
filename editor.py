@@ -31,12 +31,13 @@ class ColumnCard(Static):
 
 CSS = f"""
     Screen {{ layout: vertical; height: auto; background: transparent; }}
-    #title {{ height: 1; padding: 0 1; color: $accent; }}
+    #title {{ height: 1; padding: 0 1; color: $text-muted; }}
     #cols {{ height: auto; }}
     ColumnCard {{ width: {CARD_WIDTH}; height: auto; border: round $panel-lighten-2; padding: 0 1; }}
     ColumnCard.selected {{ border: heavy $accent; }}
     #status {{ height: auto; padding: 0 1; }}
     #help {{ height: 1; padding: 0 1; color: $text-muted; }}
+    #note {{ height: auto; padding: 0 1; color: $text-muted; text-style: italic; }}
     """
 
 
@@ -55,7 +56,7 @@ class ColumnEditor(App[Plan | None]):
         Binding("escape", "cancel", "cancel", show=False, priority=True),
     ]
 
-    def __init__(self, flat: pd.DataFrame, plan: Plan, title: str = "") -> None:
+    def __init__(self, flat: pd.DataFrame, plan: Plan, note: str = "") -> None:
         super().__init__(ansi_color=True)
         self.flat = flat
         self.plan = copy.deepcopy(plan)
@@ -65,16 +66,17 @@ class ColumnEditor(App[Plan | None]):
         self.idx = 0
         self.field = 0
         self.confirming = False
-        self.heading = title
+        self.note = note
 
     def compose(self) -> ComposeResult:
-        yield Static(f"[b]tutuptutupi[/b] — {self.heading}  {t('title_counts', rows=len(self.flat), cols=len(self.cols))}"
-                     f"  · {t('step_masking')}", id="title")
+        yield Static(t("title_counts", rows=len(self.flat), cols=len(self.cols)), id="title")
         with HorizontalScroll(id="cols"):
             for i, _ in enumerate(self.cols):
                 yield ColumnCard(id=f"c{i}")
         yield Static(id="status")
         yield Static(t("help_editor"), id="help")
+        if self.note:
+            yield Static(self.note, id="note")
 
     def on_mount(self) -> None:
         self.refresh_cards()
@@ -164,7 +166,7 @@ class IndexPicker(App[list[str] | None]):
         Binding("escape", "cancel", "cancel", show=False, priority=True),
     ]
 
-    def __init__(self, flat: pd.DataFrame, title: str = "") -> None:
+    def __init__(self, flat: pd.DataFrame, note: str = "") -> None:
         super().__init__(ansi_color=True)
         self.flat = flat
         self.cols = list(flat.columns)
@@ -173,16 +175,17 @@ class IndexPicker(App[list[str] | None]):
         self.shown = preview(self.sample, plan)
         self.picked: list[str] = []
         self.idx = 0
-        self.heading = title
+        self.note = note
 
     def compose(self) -> ComposeResult:
-        yield Static(f"[b]tutuptutupi[/b] — {self.heading}  {t('title_counts', rows=len(self.flat), cols=len(self.cols))}"
-                     f"  · {t('step_index')}", id="title")
+        yield Static(t("title_counts", rows=len(self.flat), cols=len(self.cols)), id="title")
         with HorizontalScroll(id="cols"):
             for i, _ in enumerate(self.cols):
                 yield ColumnCard(id=f"c{i}")
         yield Static(id="status")
         yield Static(t("help_index"), id="help")
+        if self.note:
+            yield Static(self.note, id="note")
 
     def on_mount(self) -> None:
         self.refresh_cards()
@@ -241,9 +244,9 @@ def _fit(s: str, n: int) -> str:
     return s if len(s) <= n else s[: n - 1] + "…"
 
 
-def edit_plan(flat: pd.DataFrame, plan: Plan, title: str = "") -> Plan | None:
-    return ColumnEditor(flat, plan, title).run(inline=True)
+def edit_plan(flat: pd.DataFrame, plan: Plan, note: str = "") -> Plan | None:
+    return ColumnEditor(flat, plan, note).run(inline=True)
 
 
-def pick_index(flat: pd.DataFrame, title: str = "") -> list[str] | None:
-    return IndexPicker(flat, title).run(inline=True)
+def pick_index(flat: pd.DataFrame, note: str = "") -> list[str] | None:
+    return IndexPicker(flat, note).run(inline=True)
