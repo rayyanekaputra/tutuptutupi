@@ -3,7 +3,7 @@ name = "tutuptutupi"
 version = "0.1.0"
 description = "interactive cli that masks tabular data while keeping its shape"
 requires-python = ">=3.11"
-dependencies = ["pandas>=2", "questionary>=2", "rich>=13", "openpyxl", "pyarrow"]
+dependencies = ["pandas>=2", "questionary>=2", "rich>=13", "openpyxl", "xlrd", "pyarrow"]
 
 [project.optional-dependencies]
 dev = ["pytest"]
