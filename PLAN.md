@@ -2,6 +2,7 @@
 
 ## UX — interactive flow
 1. `tutuptutupi` (or `tutuptutupi path/to/file`) launches the app.
+   First prompt: language (English default, Bahasa Indonesia second; `--lang` skips it).
 2. Pick file (arrow-key list) -> pick sheet (Excel) -> pick index columns on horizontal cards
    (same look as the column editor; toggle order = multiindex level order)
    (single or multiple -> MultiIndex).
