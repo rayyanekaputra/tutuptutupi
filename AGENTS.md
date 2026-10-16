@@ -33,7 +33,9 @@ The consumer only needs structure, not real values.
 ## Stack & conventions
 - Python 3.11+, pandas. Interactive UI via `questionary` (prompts) + `rich` (tables/preview).
   A non-interactive path (flags) may exist for scripting, but interactive is the main UX.
-- Tests with `pytest`. Run: `pytest -q`.
+- Setup: `python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"`. Run app: `.venv/bin/tutuptutupi`.
+- Tests with `pytest`. Run: `.venv/bin/pytest -q`.
+- Each export also writes `<name>.schema.md` with original dtypes/roles for the llm.
 - Layout: `tutuptutupi/` (package), `tests/`, `PLAN.md` (implementation plan).
 - Type hints everywhere; small pure functions per dtype.
 

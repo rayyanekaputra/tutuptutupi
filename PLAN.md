@@ -27,7 +27,7 @@
 - Nulls stay null in all modes. Column/index names kept unless the user asks to mask them.
 
 ## Modules
-- `io.py` — read/write CSV, TSV, Excel, Parquet, JSON.
+- `fileio.py` — read/write CSV, TSV, Excel, Parquet, JSON.
 - `detect.py` — infer per column kind: id, name/text, email, date string + format, number, bool, category.
 - `maskers.py` — pure functions per mode x kind.
 - `core.py` — `mask_frame(df, plan) -> DataFrame`, including index levels.
