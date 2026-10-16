@@ -1,8 +1,8 @@
 import pandas as pd
 import pytest
 
-from tutuptutupi import maskers as m
-from tutuptutupi.core import ColumnPlan, Plan, auto_plan, mask_frame
+import maskers as m
+from core import ColumnPlan, Plan, auto_plan, mask_frame
 
 
 @pytest.fixture
@@ -92,8 +92,8 @@ def test_fake_int_id_same_digits():
 
 
 def test_sampled_range_index_not_written(tmp_path, df):
-    from tutuptutupi.core import sample_rows
-    from tutuptutupi.fileio import read_table, write_table
+    from core import sample_rows
+    from fileio import read_table, write_table
     out = tmp_path / "o.csv"
     write_table(mask_frame(sample_rows(df, 3, 0), auto_plan(df)), out)
     assert list(read_table(out).columns) == list(df.columns)

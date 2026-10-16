@@ -7,8 +7,8 @@ from datetime import datetime
 
 import pandas as pd
 
-from . import maskers as m
-from .detect import default_mode, detect_date_format, guess_role
+import maskers as m
+from detect import default_mode, detect_date_format, guess_role
 
 MODES = ["partial", "full", "fake", "keep"]
 

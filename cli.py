@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from . import __version__
+__version__ = "0.1.0"
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -22,12 +22,12 @@ def main(argv: list[str] | None = None) -> None:
     args = p.parse_args(argv)
 
     if not args.yes:
-        from .app import run
+        from app import run
         run(args.file, seed=args.seed)
         return
 
-    from .core import auto_plan, mask_frame, sample_rows, schema_notes
-    from .fileio import read_table, write_table
+    from core import auto_plan, mask_frame, sample_rows, schema_notes
+    from fileio import read_table, write_table
 
     if not args.file:
         p.error("--yes needs an input file")

@@ -10,9 +10,9 @@ import questionary
 from rich.console import Console
 from rich.table import Table
 
-from .core import MODES, ColumnPlan, _date_fmt, auto_plan, flatten, mask_frame, sample_rows, schema_notes
-from .detect import ROLES, default_mode, guess_role
-from .fileio import EXCEL, SUPPORTED, excel_sheets, read_table, write_table
+from core import MODES, ColumnPlan, _date_fmt, auto_plan, flatten, mask_frame, sample_rows, schema_notes
+from detect import ROLES, default_mode, guess_role
+from fileio import EXCEL, SUPPORTED, excel_sheets, read_table, write_table
 
 console = Console()
 

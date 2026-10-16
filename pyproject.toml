@@ -9,11 +9,14 @@ dependencies = ["pandas>=2", "questionary>=2", "rich>=13", "openpyxl", "xlrd", "
 dev = ["pytest"]
 
 [project.scripts]
-tutuptutupi = "tutuptutupi.cli:main"
+tutuptutupi = "cli:main"
 
 [build-system]
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["tutuptutupi"]
+py-modules = ["app", "cli", "core", "detect", "fileio", "maskers"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
