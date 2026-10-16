@@ -42,6 +42,9 @@ The consumer only needs structure, not real values.
 
 ## Git workflow
 - Commit after **every** update (code, docs, config). One logical change per commit.
+- After each commit, keep the context files current: if the change affects anything CLAUDE.md or
+  AGENTS.md describe (stack, layout, modules, UX, rules, commands), update them in a follow-up
+  `docs` commit (e.g. `docs(agents): note inline tui`). Skip it when nothing they say changed.
 - Commit messages are **entirely lowercase, including trailers** (e.g. `co-authored-by: claude opus 5.5 <noreply@anthropic.com>`), conventional-commit style:
   `type(scope): short summary`, e.g. `feat: add id masker`, `docs(agents): add git rules`,
   `fix(io): keep multiindex on csv read`, `test: cover fixed-width ids`, `chore: add gitignore`.
