@@ -37,6 +37,9 @@ The consumer only needs structure, not real values.
 - UI language: the first prompt picks English (default) or Bahasa Indonesia (`--lang en|id` skips it).
   All user-facing strings live in `i18n.py` (`t(key)`, every key needs both languages); role/mode names
   and the `.schema.md` sidecar stay English.
+- Every step starts with a lowercase decorated header (`✦ step n/6 · title ✦`, file name as a yellow badge)
+  and every prompt/TUI shows a dim `now: … / next: …` note at the bottom (`_step()` / `_with_note()` in `app.py`).
+  New prompts go through `_ask()` so they get the note; new steps need `STEPS` + `s_/now_/next_` keys in `i18n.py`.
 - Setup: `python3 -m venv .venv && .venv/bin/pip install -r requirements.txt` (add `-r requirements-dev.txt` for tests). Run app: `python3 tutuptutupi.py` (or `./tutuptutupi.py [file]`) — it switches to `.venv` automatically.
 - Tests with `pytest`. Run: `.venv/bin/pytest -q`.
 - Each export also writes `<name>.schema.md` with original dtypes/roles for the llm.
