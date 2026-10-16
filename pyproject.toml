@@ -1,0 +1,19 @@
+[project]
+name = "tutuptutupi"
+version = "0.1.0"
+description = "interactive cli that masks tabular data while keeping its shape"
+requires-python = ">=3.11"
+dependencies = ["pandas>=2", "questionary>=2", "rich>=13", "openpyxl", "pyarrow"]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[project.scripts]
+tutuptutupi = "tutuptutupi.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["tutuptutupi"]
