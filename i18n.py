@@ -10,6 +10,7 @@ STRINGS: dict[str, tuple[str, str]] = {
     # app
     "banner": ("mask data, keep the shape", "samarkan data, bentuknya tetap"),
     "cancelled": ("cancelled", "dibatalkan"),
+    "press_enter": ("press enter to close", "tekan enter untuk menutup"),
     "path_prompt": ("path to file:", "path file:"),
     "path_invalid": ("must be an existing {exts} file", "harus file {exts} yang sudah ada"),
     "not_a_file": ("not a file:", "bukan file:"),

@@ -68,7 +68,8 @@ def _ask(q):
     return answer
 
 
-PROJECT_DIR = Path(__file__).resolve().parent
+# frozen exe (pyinstaller): __file__ points into a temp unpack dir, so list the exe's folder instead
+PROJECT_DIR = Path(sys.executable if getattr(sys, "frozen", False) else __file__).resolve().parent
 TYPE_PATH = "__type_path__"
 
 
