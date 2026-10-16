@@ -32,7 +32,7 @@ The consumer only needs structure, not real values.
 
 ## Stack & conventions
 - Python 3.11+, pandas. Interactive UI via `questionary` (prompts), `rich` (tables) and `textual` (index picker + horizontal column editor, `editor.py`).
-  The textual apps run **inline** (`run(inline=True)`, `ansi_color=True`) like agentic CLIs, not fullscreen; keep it that way.
+  The textual apps run **inline** (`run(inline=True)`, `ansi_color=True`) like agentic CLIs, not fullscreen; keep it that way. (Textual itself falls back to fullscreen on Windows.)
   A non-interactive path (flags) may exist for scripting, but interactive is the main UX.
 - UI language: the first prompt picks English (default) or Bahasa Indonesia (`--lang en|id` skips it).
   All user-facing strings live in `i18n.py` (`t(key)`, every key needs both languages); role/mode names
@@ -42,6 +42,8 @@ The consumer only needs structure, not real values.
   New prompts go through `_ask()` so they get the note; new steps need `STEPS` + `s_/now_/next_` keys in `i18n.py`.
 - Setup: `python3 -m venv .venv && .venv/bin/pip install -r requirements.txt` (add `-r requirements-dev.txt` for tests). Run app: `python3 tutuptutupi.py` (or `./tutuptutupi.py [file]`) — it switches to `.venv` automatically.
 - Tests with `pytest`. Run: `.venv/bin/pytest -q`.
+- Windows exe: PyInstaller onefile, built on Windows with `build_windows.ps1` (steps in `BUILD_WINDOWS.md`).
+  When frozen, the file picker lists the exe's folder and the window waits for enter before closing (`tutuptutupi.py`).
 - Each export also writes `<name>.schema.md` with original dtypes/roles for the llm.
 - Layout: entry point `tutuptutupi.py`, flat modules in the repo root (`app.py`, `cli.py`, `core.py`, `detect.py`, `editor.py`, `fileio.py`, `i18n.py`, `maskers.py`), `tests/`, `PLAN.md`. No nested package folder.
 - Type hints everywhere; small pure functions per dtype.
