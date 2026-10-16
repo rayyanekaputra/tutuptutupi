@@ -13,3 +13,15 @@ def test_list_files(tmp_path):
     (tmp_path / "sub").mkdir()
     (tmp_path / "sub" / "deep.csv").write_text("a")
     assert [p.name for p in list_files(tmp_path)] == ["new.xlsx", "old.csv"]
+
+
+def test_translations_complete_and_formatting():
+    from i18n import STRINGS, set_lang, t
+    for key, (en, id_) in STRINGS.items():
+        assert en and id_, key
+    set_lang("id")
+    try:
+        assert t("days_ago", n=3) == "3 hari lalu"
+    finally:
+        set_lang("en")
+    assert t("days_ago", n=3) == "3 days ago"

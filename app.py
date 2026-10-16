@@ -17,6 +17,7 @@ from rich.table import Table
 from core import MODES, Plan, auto_plan, flatten, mask_frame, preview, sample_row, sample_rows, schema_notes, set_column
 from detect import ROLES, default_mode
 from fileio import EXCEL, SUPPORTED, excel_sheets, read_table, write_table
+from i18n import ALL_WORDS, LANGS, set_lang, t
 
 console = Console()
 _PREVIEW_SEED = random.randrange(2**31)  # stable fake values across previews
@@ -26,7 +27,7 @@ def _ask(q):
     """unwrap a questionary prompt; ctrl+c exits cleanly."""
     answer = q.ask()
     if answer is None:
-        console.print("[yellow]cancelled[/]")
+        console.print(f"[yellow]{t('cancelled')}[/]")
         sys.exit(1)
     return answer
 
@@ -52,14 +53,14 @@ def _human_size(n: float) -> str:
 
 def _age(mtime: float) -> str:
     days = int((time.time() - mtime) // 86400)
-    return "today" if days == 0 else "yesterday" if days == 1 else f"{days} days ago"
+    return t("today") if days == 0 else t("yesterday") if days == 1 else t("days_ago", n=days)
 
 
 def _type_path() -> Path:
     return Path(_ask(questionary.path(
-        "path to file:",
+        t("path_prompt"),
         validate=lambda p: Path(p).is_file() and Path(p).suffix.lower() in SUPPORTED
-        or f"must be an existing {', '.join(sorted(SUPPORTED))} file",
+        or t("path_invalid", exts=", ".join(sorted(SUPPORTED))),
     )))
 
 
@@ -67,69 +68,69 @@ def _pick_file(given: str | None) -> Path:
     if given:
         path = Path(given)
         if not path.is_file():
-            console.print(f"[red]not a file:[/] {path}")
+            console.print(f"[red]{t('not_a_file')}[/] {path}")
             sys.exit(1)
         return path
     files = list_files(PROJECT_DIR)
     if not files:
-        console.print(f"[yellow]no supported files in {PROJECT_DIR}[/]")
+        console.print(f"[yellow]{t('no_files', folder=PROJECT_DIR)}[/]")
         return _type_path()
     width = max(len(p.name) for p in files)
     choices = [
         questionary.Choice(f"{p.name.ljust(width)}   ({_human_size(p.stat().st_size)}, {_age(p.stat().st_mtime)})", value=str(p))
         for p in files
     ]
-    choices.append(questionary.Choice("✎ type a path…", value=TYPE_PATH))
+    choices.append(questionary.Choice(t("type_path"), value=TYPE_PATH))
     picked = _ask(questionary.select(
-        "file to mask: (arrows to move, type to filter)", choices=choices,
+        t("pick_file"), choices=choices,
         use_search_filter=True, use_jk_keys=False))
     return _type_path() if picked == TYPE_PATH else Path(picked)
 
 
 def _overview(df: pd.DataFrame) -> None:
     flat, index_names = flatten(df)
-    t = Table(title=f"{len(df)} rows x {len(df.columns)} columns"
-              + (f", index: {', '.join(index_names)}" if index_names else ""))
-    for h in ("column", "dtype", "null %", "unique"):
-        t.add_column(h)
+    tbl = Table(title=t("overview_title", rows=len(df), cols=len(df.columns))
+                + (t("overview_index", names=", ".join(index_names)) if index_names else ""))
+    for h in ("h_column", "h_dtype", "h_null", "h_unique"):
+        tbl.add_column(t(h))
     for col in flat.columns:
         s = flat[col]
-        t.add_row(str(col), str(s.dtype), f"{s.isna().mean() * 100:.1f}", str(s.nunique()))
-    console.print(t)
+        tbl.add_row(str(col), str(s.dtype), f"{s.isna().mean() * 100:.1f}", str(s.nunique()))
+    console.print(tbl)
 
 
 def _preview(masked: pd.DataFrame, n: int = 5) -> None:
     flat, _ = flatten(masked)
-    t = Table(title="masked preview")
+    tbl = Table(title=t("preview_title"))
     for col in flat.columns:
-        t.add_column(str(col))
+        tbl.add_column(str(col))
     for _, row in flat.head(n).iterrows():
-        t.add_row(*["" if pd.isna(v) else str(v) for v in row])
-    console.print(t)
+        tbl.add_row(*["" if pd.isna(v) else str(v) for v in row])
+    console.print(tbl)
 
 
 def _summary(plan: Plan, flat: pd.DataFrame, sample: pd.DataFrame) -> None:
     shown = preview(sample, replace(plan, seed=_PREVIEW_SEED))
-    t = Table(title="masking plan (sample row shown masked)")
-    for h in ("column", "dtype", "role", "mode", "sample"):
-        t.add_column(h)
+    tbl = Table(title=t("summary_title"))
+    for h in ("h_column", "h_dtype", "h_role", "h_mode", "h_sample"):
+        tbl.add_column(t(h))
     for col, cp in plan.columns.items():
-        warn = " [red]⚠ real values[/]" if cp.mode == "keep" and cp.role in ("id", "text") else ""
-        t.add_row(str(col), str(flat[col].dtype), cp.role, cp.mode + warn, shown.get(col, ""))
-    console.print(t)
+        warn = f" [red]{t('real_values')}[/]" if cp.mode == "keep" and cp.role in ("id", "text") else ""
+        tbl.add_row(str(col), str(flat[col].dtype), cp.role, cp.mode + warn, shown.get(col, ""))
+    console.print(tbl)
 
 
 def _edit_column(plan: Plan, flat: pd.DataFrame, col: str) -> None:
     cp = plan.columns[col]
-    role = _ask(questionary.select(f"[{col}] ({flat[col].dtype}) role:", choices=ROLES, default=cp.role))
+    role = _ask(questionary.select(t("ask_role", col=col, dtype=flat[col].dtype), choices=ROLES, default=cp.role))
     mode = _ask(questionary.select(
-        f"[{col}] mask mode:", choices=MODES, default=cp.mode if role == cp.role else default_mode(role)))
+        t("ask_mode", col=col), choices=MODES, default=cp.mode if role == cp.role else default_mode(role)))
     if mode == "keep" and role in ("id", "text"):
-        if not _ask(questionary.confirm(f"[{col}] keep real {role} values unmasked?", default=False)):
+        if not _ask(questionary.confirm(t("confirm_keep", col=col, role=role), default=False)):
             mode = default_mode(role)
     set_column(plan, flat, col, role, mode)
     if role == "date" and plan.columns[col].role != "date":
-        console.print(f"[yellow]couldn't detect a date format for {col}; masking it as text[/]")
+        console.print(f"[yellow]{t('no_date_format', col=col)}[/]")
 
 
 def _choose_columns(plan: Plan, flat: pd.DataFrame) -> None:
@@ -138,7 +139,7 @@ def _choose_columns(plan: Plan, flat: pd.DataFrame) -> None:
     while True:
         _summary(plan, flat, sample)
         picked = _ask(questionary.checkbox(
-            "which columns do you want to change? (space to tick, enter with none = accept)",
+            t("pick_change"),
             choices=[str(c) for c in plan.columns]))
         if not picked:
             return
@@ -157,14 +158,14 @@ def _pick_index(df: pd.DataFrame, title: str) -> list[str]:
             from editor import pick_index
             picked = pick_index(df, title)
         except Exception as e:  # noqa: BLE001 - any ui failure falls back to prompts
-            console.print(f"[yellow]index picker unavailable ({type(e).__name__}); using prompts[/]")
+            console.print(f"[yellow]{t('index_unavailable', err=type(e).__name__)}[/]")
         else:
             if picked is None:
-                console.print("[yellow]cancelled[/]")
+                console.print(f"[yellow]{t('cancelled')}[/]")
                 sys.exit(1)
             return picked
     return _ask(questionary.checkbox(
-        "which columns form the index? (none = plain range index, 2+ = multiindex)",
+        t("pick_index"),
         choices=[str(c) for c in df.columns]))
 
 
@@ -175,10 +176,10 @@ def _edit(plan: Plan, flat: pd.DataFrame, title: str) -> Plan:
             from editor import edit_plan
             edited = edit_plan(flat, plan, title)
         except Exception as e:  # noqa: BLE001 - any ui failure falls back to prompts
-            console.print(f"[yellow]column editor unavailable ({type(e).__name__}); using prompts[/]")
+            console.print(f"[yellow]{t('editor_unavailable', err=type(e).__name__)}[/]")
         else:
             if edited is None:
-                console.print("[yellow]cancelled[/]")
+                console.print(f"[yellow]{t('cancelled')}[/]")
                 sys.exit(1)
             _summary(edited, flat, sample_row(flat))
             return edited
@@ -188,21 +189,33 @@ def _edit(plan: Plan, flat: pd.DataFrame, title: str) -> Plan:
 
 def _ask_rows(total: int) -> int | None:
     raw = _ask(questionary.text(
-        f"how many rows to export? (of {total}, 'all' for everything)",
+        t("ask_rows", total=total),
         default=str(min(20, total)),
-        validate=lambda v: v.strip().lower() == "all" or (v.strip().isdigit() and int(v) > 0) or "a positive number or 'all'",
+        validate=lambda v: v.strip().lower() in ALL_WORDS or (v.strip().isdigit() and int(v) > 0) or t("rows_invalid"),
     ))
-    return None if raw.strip().lower() == "all" else int(raw)
+    return None if raw.strip().lower() in ALL_WORDS else int(raw)
 
 
-def run(file: str | None = None, seed: int | None = None) -> None:
-    console.print("[bold]tutuptutupi[/] — mask data, keep the shape\n")
+def _pick_lang() -> None:
+    """first question of every run; english is the default."""
+    lang = _ask(questionary.select(
+        "language / bahasa:", choices=[questionary.Choice(name, value=code) for code, name in LANGS.items()],
+        default="en"))
+    set_lang(lang)
+
+
+def run(file: str | None = None, seed: int | None = None, lang: str | None = None) -> None:
+    if lang:
+        set_lang(lang)
+    else:
+        _pick_lang()
+    console.print(f"[bold]tutuptutupi[/] — {t('banner')}\n")
     path = _pick_file(file)
 
     sheet = None
     if path.suffix.lower() in EXCEL:
         sheets = excel_sheets(path)
-        sheet = sheets[0] if len(sheets) == 1 else _ask(questionary.select("sheet:", choices=sheets))
+        sheet = sheets[0] if len(sheets) == 1 else _ask(questionary.select(t("sheet"), choices=sheets))
 
     df = read_table(path, sheet)
     if not isinstance(df.index, pd.RangeIndex) or df.index.names[0] is not None:
@@ -220,8 +233,8 @@ def run(file: str | None = None, seed: int | None = None) -> None:
 
     if any(cp.role == "id" and cp.mode in ("partial", "full") for cp in plan.columns.values()):
         plan.id_width = int(_ask(questionary.text(
-            "fixed width for masked ids:", default="8",
-            validate=lambda v: v.isdigit() and int(v) > 0 or "a positive number")))
+            t("ask_id_width"), default="8",
+            validate=lambda v: v.isdigit() and int(v) > 0 or t("positive_number"))))
 
     rows = _ask_rows(len(df))
     sampled = sample_rows(df, rows, seed)
@@ -229,19 +242,19 @@ def run(file: str | None = None, seed: int | None = None) -> None:
     _preview(masked)
 
     default_out = path.with_name(f"{path.stem}.masked{path.suffix}")
-    out = Path(_ask(questionary.path("save to:", default=str(default_out))))
+    out = Path(_ask(questionary.path(t("save_to"), default=str(default_out))))
     if out.resolve() == path.resolve():
-        console.print("[red]refusing to overwrite the input file[/]")
+        console.print(f"[red]{t('no_overwrite')}[/]")
         sys.exit(1)
     if out.suffix.lower() not in SUPPORTED:
-        console.print(f"[red]unsupported output type:[/] {out.suffix}")
+        console.print(f"[red]{t('bad_output')}[/] {out.suffix}")
         sys.exit(1)
-    if not _ask(questionary.confirm(f"write {len(masked)} masked rows to {out}?", default=True)):
-        console.print("[yellow]nothing written[/]")
+    if not _ask(questionary.confirm(t("confirm_write", n=len(masked), out=out), default=True)):
+        console.print(f"[yellow]{t('nothing_written')}[/]")
         return
 
     write_table(masked, out)
     notes = out.with_name(f"{out.stem}.schema.md")
     notes.write_text(schema_notes(df, plan))
-    console.print(f"[green]done[/] -> {out}\n       {notes} (dtypes & roles, paste it next to the data)")
-    console.print("[dim]partial masking still reveals part of each value: fine for an llm, not for public release.[/]")
+    console.print(f"[green]{t('done')}[/] -> {out}\n       {notes} {t('notes_hint')}")
+    console.print(f"[dim]{t('disclaimer')}[/]")

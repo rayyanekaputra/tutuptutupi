@@ -15,6 +15,7 @@ from textual.widgets import Static
 
 from core import MODES, Plan, auto_plan, preview, sample_row, set_column
 from detect import ROLES, default_mode
+from i18n import t
 
 CARD_WIDTH = 22
 FIELDS = ("role", "mode")
@@ -67,13 +68,13 @@ class ColumnEditor(App[Plan | None]):
         self.heading = title
 
     def compose(self) -> ComposeResult:
-        yield Static(f"[b]tutuptutupi[/b] — {self.heading}  ({len(self.flat)} rows, {len(self.cols)} columns)"
-                     "  · step 2: masking", id="title")
+        yield Static(f"[b]tutuptutupi[/b] — {self.heading}  {t('title_counts', rows=len(self.flat), cols=len(self.cols))}"
+                     f"  · {t('step_masking')}", id="title")
         with HorizontalScroll(id="cols"):
             for i, _ in enumerate(self.cols):
                 yield ColumnCard(id=f"c{i}")
         yield Static(id="status")
-        yield Static("←/→ column   ↑/↓ change   tab role/mode   enter done   esc cancel", id="help")
+        yield Static(t("help_editor"), id="help")
 
     def on_mount(self) -> None:
         self.refresh_cards()
@@ -93,25 +94,25 @@ class ColumnEditor(App[Plan | None]):
     def _card_text(self, i: int, col: str, sample: str) -> Text:
         cp = self.plan.columns[col]
         inner = CARD_WIDTH - 4
-        t = Text(no_wrap=True, overflow="ellipsis")
-        t.append(_fit(str(col), inner) + "\n", style="bold")
-        t.append(_fit(str(self.flat[col].dtype), inner) + "\n", style="dim")
-        t.append("─" * inner + "\n", style="dim")
+        txt = Text(no_wrap=True, overflow="ellipsis")
+        txt.append(_fit(str(col), inner) + "\n", style="bold")
+        txt.append(_fit(str(self.flat[col].dtype), inner) + "\n", style="dim")
+        txt.append("─" * inner + "\n", style="dim")
         for f, value in zip(FIELDS, (cp.role, cp.mode)):
             active = i == self.idx and FIELDS[self.field] == f
-            t.append(f"{f}: ", style="dim")
-            t.append(f"{'▲▼ ' if active else ''}{value}" + "\n", style="reverse bold" if active else "")
-        t.append("─" * inner + "\n", style="dim")
-        t.append(_fit(sample or "∅", inner), style="red" if _risky(cp) else "green" if cp.mode != "keep" else "")
-        return t
+            txt.append(f"{t('f_' + f)}: ", style="dim")
+            txt.append(f"{'▲▼ ' if active else ''}{value}" + "\n", style="reverse bold" if active else "")
+        txt.append("─" * inner + "\n", style="dim")
+        txt.append(_fit(sample or "∅", inner), style="red" if _risky(cp) else "green" if cp.mode != "keep" else "")
+        return txt
 
     def _status(self) -> None:
         risky = [c for c in self.cols if _risky(self.plan.columns[c])]
         msg = ""
         if self.confirming:
-            msg = f"[red b]⚠ {', '.join(risky)} will be exported with REAL values. enter again to confirm, any change to cancel.[/]"
+            msg = f"[red b]{t('confirm_risky', cols=', '.join(risky))}[/]"
         elif risky:
-            msg = f"[red]⚠ real values kept in: {', '.join(risky)}[/]"
+            msg = f"[red]{t('risky', cols=', '.join(risky))}[/]"
         self.query_one("#status", Static).update(msg)
 
     # ---------- actions ----------
@@ -175,13 +176,13 @@ class IndexPicker(App[list[str] | None]):
         self.heading = title
 
     def compose(self) -> ComposeResult:
-        yield Static(f"[b]tutuptutupi[/b] — {self.heading}  ({len(self.flat)} rows, {len(self.cols)} columns)"
-                     "  · step 1: index columns", id="title")
+        yield Static(f"[b]tutuptutupi[/b] — {self.heading}  {t('title_counts', rows=len(self.flat), cols=len(self.cols))}"
+                     f"  · {t('step_index')}", id="title")
         with HorizontalScroll(id="cols"):
             for i, _ in enumerate(self.cols):
                 yield ColumnCard(id=f"c{i}")
         yield Static(id="status")
-        yield Static("←/→ column   space or ↑/↓ toggle index   enter done (none = plain index)   esc cancel", id="help")
+        yield Static(t("help_index"), id="help")
 
     def on_mount(self) -> None:
         self.refresh_cards()
@@ -194,28 +195,28 @@ class IndexPicker(App[list[str] | None]):
         self.query_one("#cols", HorizontalScroll).scroll_to_widget(
             self.query_one(f"#c{self.idx}", ColumnCard), animate=False)
         if not self.picked:
-            msg = "no index: plain row numbers"
+            msg = t("no_index")
         elif len(self.picked) == 1:
-            msg = f"index: {self.picked[0]}"
+            msg = t("index_one", col=self.picked[0])
         else:
-            msg = f"multiindex: {' → '.join(map(str, self.picked))}"
+            msg = t("index_multi", cols=" → ".join(map(str, self.picked)))
         self.query_one("#status", Static).update(msg)
 
     def _card_text(self, i: int, col: str) -> Text:
         inner = CARD_WIDTH - 4
         s = self.flat[col]
-        t = Text(no_wrap=True, overflow="ellipsis")
-        t.append(_fit(str(col), inner) + "\n", style="bold")
-        t.append(_fit(str(s.dtype), inner) + "\n", style="dim")
-        t.append(_fit(f"unique: {s.nunique()}/{len(s)}", inner) + "\n", style="dim")
-        t.append("─" * inner + "\n", style="dim")
+        txt = Text(no_wrap=True, overflow="ellipsis")
+        txt.append(_fit(str(col), inner) + "\n", style="bold")
+        txt.append(_fit(str(s.dtype), inner) + "\n", style="dim")
+        txt.append(_fit(t("unique_count", n=s.nunique(), total=len(s)), inner) + "\n", style="dim")
+        txt.append("─" * inner + "\n", style="dim")
         if col in self.picked:
-            t.append(f"[✓] index #{self.picked.index(col) + 1}\n", style="reverse bold" if i == self.idx else "bold green")
+            txt.append(t("index_on", n=self.picked.index(col) + 1) + "\n", style="reverse bold" if i == self.idx else "bold green")
         else:
-            t.append("[ ] index\n", style="reverse" if i == self.idx else "dim")
-        t.append("─" * inner + "\n", style="dim")
-        t.append(_fit(self.shown.get(col, "") or "∅", inner), style="green")
-        return t
+            txt.append(t("index_off") + "\n", style="reverse" if i == self.idx else "dim")
+        txt.append("─" * inner + "\n", style="dim")
+        txt.append(_fit(self.shown.get(col, "") or "∅", inner), style="green")
+        return txt
 
     def action_move(self, step: int) -> None:
         self.idx = (self.idx + step) % len(self.cols)

@@ -18,12 +18,13 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--sheet", help="excel sheet name")
     p.add_argument("--id-width", type=int, default=8, help="fixed width for masked ids")
     p.add_argument("--seed", type=int, help="make masking reproducible")
+    p.add_argument("--lang", choices=["en", "id"], help="ui language (en = english, id = bahasa indonesia); skips the prompt")
     p.add_argument("--version", action="version", version=__version__)
     args = p.parse_args(argv)
 
     if not args.yes:
         from app import run
-        run(args.file, seed=args.seed)
+        run(args.file, seed=args.seed, lang=args.lang)
         return
 
     from core import auto_plan, mask_frame, sample_rows, schema_notes
