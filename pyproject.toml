@@ -6,7 +6,7 @@ requires-python = ">=3.11"
 dependencies = ["pandas>=2", "questionary>=2", "rich>=13", "openpyxl", "xlrd", "pyarrow", "textual>=0.80"]
 
 [project.optional-dependencies]
-dev = ["pytest", "pytest-asyncio"]
+dev = ["pytest", "pytest-asyncio", "pyinstaller"]
 
 [project.scripts]
 tutuptutupi = "cli:main"
