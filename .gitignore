@@ -1,0 +1,46 @@
+# Data files — never commit real data
+*.xlsx
+*.xlsm
+*.xlsb
+*.xls
+*.ods
+*.csv
+*.tsv
+*.parquet
+*.feather
+*.arrow
+*.json
+*.jsonl
+*.ndjson
+*.pkl
+*.pickle
+*.h5
+*.hdf5
+*.db
+*.sqlite
+*.sqlite3
+*.sav
+*.dta
+data/
+output/
+
+# Allow small synthetic fixtures for tests
+!tests/fixtures/**
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+dist/
+build/
+
+# Env / editors
+.env
+.vscode/
+.idea/
+.DS_Store
