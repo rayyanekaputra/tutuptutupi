@@ -39,7 +39,7 @@ The consumer only needs structure, not real values.
 
 ## Git workflow
 - Commit after **every** update (code, docs, config). One logical change per commit.
-- Commit messages are **all lowercase**, conventional-commit style:
+- Commit messages are **entirely lowercase, including trailers** (e.g. `co-authored-by: claude opus 5.5 <noreply@anthropic.com>`), conventional-commit style:
   `type(scope): short summary`, e.g. `feat: add id masker`, `docs(agents): add git rules`,
   `fix(io): keep multiindex on csv read`, `test: cover fixed-width ids`, `chore: add gitignore`.
 - Types: `feat`, `fix`, `docs`, `test`, `refactor`, `chore`. Scope is optional.
