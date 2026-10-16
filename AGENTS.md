@@ -10,14 +10,17 @@ The consumer only needs structure, not real values.
 - Index structure (single vs MultiIndex, index names, levels)
 - dtypes (int stays int, float stays float, bool, datetime, category, string)
 - Value *format*: date format string, string length/char class pattern
-  (e.g. `AB-1234` -> `XQ-8302`), number of digits/decimals, sign
+  (e.g. `AB-1234` -> `XQ-8302`), number of digits/decimals, sign (except IDs, see below)
 - Nulls: same positions stay null
 - Cardinality, roughly (repeated values map to the same fake value -> joins/groupbys still work)
 
 ## What must be hidden
 - Default mode is **partial masking**: about half of each value is replaced with `*`
-  (e.g. `jason brody` -> `jas*******y`, `34123` -> `**12*`), so the LLM can still tell
+  (e.g. `jason brody` -> `jas** ***dy`). IDs are masked to a **fixed width**
+  (default 8) so the real length is hidden: `34123` -> `**12****`. The LLM can still tell
   what kind of data it is. Full masking / synthetic fakes are opt-in modes.
+- Only columns the user marks as `id` get censored among numeric columns; plain numbers
+  (amounts, counts) are kept by default. The app asks the role of each column one by one.
 - Output must always contain data. No schema-only or empty output.
 
 ## Principles
@@ -33,3 +36,10 @@ The consumer only needs structure, not real values.
 - Tests with `pytest`. Run: `pytest -q`.
 - Layout: `tutuptutupi/` (package), `tests/`, `PLAN.md` (implementation plan).
 - Type hints everywhere; small pure functions per dtype.
+
+## Git workflow
+- Commit after **every** update (code, docs, config). One logical change per commit.
+- Commit messages are **all lowercase**, conventional-commit style:
+  `type(scope): short summary`, e.g. `feat: add id masker`, `docs(agents): add git rules`,
+  `fix(io): keep multiindex on csv read`, `test: cover fixed-width ids`, `chore: add gitignore`.
+- Types: `feat`, `fix`, `docs`, `test`, `refactor`, `chore`. Scope is optional.
